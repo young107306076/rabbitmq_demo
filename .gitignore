@@ -1,0 +1,5 @@
+.idea
+tests
+.venv
+README.zip
+./rabbitmq_demo/__pycache__

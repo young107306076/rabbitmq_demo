@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "rabbitmq-demo"
+version = "0.1.0"
+description = ""
+authors = ["young107306076 <young30310@gmail.com>"]
+readme = "README.md"
+packages = [{include = "rabbitmq_demo"}]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+pika = "^1.3.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
