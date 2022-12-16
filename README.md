@@ -1,3 +1,6 @@
+### (閱覽文件前說明) 該專案夾層說明
+**- 是以實作專案隔開**
+
 # RabbitMQ
 [完整說明](https://www.rabbitmq.com/)
 ---
@@ -236,7 +239,4 @@ python emit_log_direct.py error "Run. Run. Or it will explode."
 
 **basic_consume**
 1. auto_ack : 基本上預設為 True, 也就是 Consumer 處理完任務會回傳一個 ack 給 queue
-
-### 該專案夾層說明
-**是以實作專案隔開**
 
