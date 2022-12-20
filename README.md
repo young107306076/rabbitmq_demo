@@ -1,6 +1,118 @@
 ### (閱覽文件前說明) 該專案夾層說明
 **- 是以實作專案隔開**
 
+# Task Queue vs. Message Queue
+
+
+簡易比較
+-----------
+----
+![image](https://img-blog.csdnimg.cn/img_convert/0e5c85cb3da5e5e92e78e243438d06ec.png)
+![image](https://img-blog.csdnimg.cn/img_convert/03c327a85fbe1eeb8e685d531c914c9a.png)
+
+- 消息隊列更側重於消息的吞吐、處理，具有有處理海量信息的能力。另外利用消息隊列的生產者和消費者的概念，也可以實現任務隊列的功能，但是還需要進行額外的開發處理。
+
+
+- 任務隊列則提供了執行任務所需的功能，比如任務的重試，結果的返回，任務狀態記錄等。雖然也有並發的處理能力，但一般不適用於高吞吐量快速消費的場景。其實任務隊列和遠程函數調用很像，不過和rpc調用不同，他的調用不是網絡請求的方式，而是通過利用消息隊列傳遞任務信息
+
+總結 : Task Queue 其實也就是 Message Queue 二度開發後的成果；Task Queue 是相對於 Message Queue 更高層級的管理視角
+
+產品比較
+-----------
+----
+## Celery vs. RabbitMQ
+
+### Celery 簡介 : 具體實作 Task Queue 的模組，以 Task-Broker-Worker 架構看
+
+- 優點
+  - 包裝好訊息隊列的底層設定，讓使用者只要專注於 Task 的設計
+  - 可以直接設定定時、延遲、刪除 Task 與回傳任務訊息等動作
+  ![image](https://i.imgur.com/lqKI8kD.png)
+- 缺點
+  - 訊息吞吐量沒有 MQ 這麼高
+
+### RabbitMQ 簡介 : 具體實作 Message Queue 的工具，以 Producer-Broker-Consumer 架構看
+
+- 優點
+  - 在開發上比較靈活，相較上方工具比較多自定義的部分
+  - 相較上方工具在程式上更解偶合
+- 缺點
+  - 支持 RabbitMQ Server 的 Erlang 上的管理
+  - 上方提及的定時、延遲等都要根據自己在程式上做定義，回傳訊息則要使用RPC
+
+Celery
+```
+  from tasks import add
+  import time
+
+  result = add.delay(4, 4)
+
+  while 1:
+      if result.ready():
+          print 'result ',result.get()
+          break
+      else:
+          print 'not ready, wait 1 second'
+          time.sleep(1)
+```
+RabbitMQ
+```
+import pika
+import uuid
+import simplejson as json
+
+class TaskRpcClient(object):
+    def __init__(self):
+        self.connection = pika.BlockingConnection(pika.ConnectionParameters(
+                host='localhost'))
+
+        self.channel = self.connection.channel()
+
+        result = self.channel.queue_declare(exclusive=True)
+        self.callback_queue = result.method.queue
+
+        self.channel.basic_consume(self.on_response, no_ack=True,
+                                   queue=self.callback_queue)
+
+    def on_response(self, ch, method, props, body):
+        if self.corr_id == props.correlation_id:
+            self.response = body
+
+    def add(self, x, y):
+        body = json.dumps([x, y])
+        self.response = None
+        self.corr_id = str(uuid.uuid4())
+        self.channel.basic_publish(exchange='',
+                                   routing_key='rpc_queue',
+                                   properties=pika.BasicProperties(
+                                         reply_to = self.callback_queue,
+                                         correlation_id = self.corr_id,
+                                         ),
+                                   body=body)
+        while self.response is None:
+            self.connection.process_data_events()
+        return int(self.response)
+
+task_rpc = TaskRpcClient()
+
+x = 4
+y = 4
+print(" [x] Requesting %d + %d" % (x,y))
+response = task_rpc.add(x, y)
+print(" [.] Got %r" % response)
+```
+可以看到在 Celery 是直接 import 該任務的函數
+
+
+
+### Use Case
+1. 以目前產品來說，大多執行完任務後不會回傳訊息，而是會將結果儲存在一個位址上
+2. 希望在程式架構間不要互相引用
+
+以上述兩種使用情況來說，我會比較建議使用 Message Queue 的方式。
+
+
+
 # RabbitMQ
 [完整說明](https://www.rabbitmq.com/)
 ---
