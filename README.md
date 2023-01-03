@@ -352,3 +352,18 @@ python emit_log_direct.py error "Run. Run. Or it will explode."
 **basic_consume**
 1. auto_ack : 基本上預設為 True, 也就是 Consumer 處理完任務會回傳一個 ack 給 queue
 
+Special Use Case
+----------
+------
+### 1. 如何知道該訊息進入了哪一個消費者去執行?
+由於 queue 會隨機分配訊息給連接的消費者們，因此無法指定該訊息進入特定的消費者裡，只能透過在資料庫存取訊息的所在位址
+
+### 2. Consumer 的錯誤處理機制 ( 包括時間太長或程式錯誤 )
+基本上在 queue 成功將訊息丟給消費者後，需經歷 acknowledge 的過程才會將訊息刪除，而預設在消費者處理完訊息後會回傳 basic.ack，
+但是根據訊息在該消費者裡處理時間太長，或是處理到一半程式出錯，即設定回傳 basic.nack 讓 queue 知道消費者發生錯誤，因此會再將該訊息放在 queue 裡重新排隊
+
+### 3. 針對動態資料變動更改 Message 的內容
+基本上無法，只能透過訊息在消費者裡處理的時候，從資料庫要當下該資源的資料
+
+### 4. 優先級訊息如何進行插隊?
+基本上有[官方方法](https://medium.com/willhanchen/rabbitmq-%E8%A8%8A%E6%81%AF%E7%9A%84%E5%A6%82%E4%BD%95%E6%8F%92%E9%9A%8A-priority-ee7c9566b388)提供，在訊息中的 header 加上"x-prior": number 即可，其為 key-value 的形式，而該 number 則為 1~20 的正整數可以選擇
